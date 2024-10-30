@@ -440,6 +440,9 @@ def limpieza_ine_econ(df_econ):
     # Eliminar columnas sobrantes
     df_econ.drop(columns=['Provincias', 'provincia'], inplace=True)
 
+    # Renombrar columnas
+    df_econ.rename(columns={'periodo': 'year', 'Total': 'total', 'Ramas de actividad': 'categories'}, inplace=True)
+
     return df_econ, df_provincias
 
 
@@ -463,14 +466,16 @@ def limpieza_ine_demo(df_demo):
 
     df_demo = df_demo[cond1 & cond2 & cond3 & cond4 & cond5]
 
+    # Total
+    df_demo['Total'] = df_demo['Total'].str.replace('.','').astype(float)
     # Provincias
     df_demo['provincia'] = df_demo['Provincias'].str.split(r'\s(\D+)', regex=True, expand=True)[1]
     df_demo['provincia_id'] = df_demo['Provincias'].str.split(r'\s(\D+)', regex=True, expand=True)[0]
-    # quitar columnas
+    # Quitar columnas
     df_demo.drop(columns='Provincias', inplace=True)
     df_demo.reset_index(drop=True, inplace=True)
 
     # Renombrar columnas
-    df_demo.rename(columns={'Edad (3 grupos de edad)': 'Grupo_edad', 'Españoles/Extranjeros': 'Origen'}, inplace=True)
+    df_demo.rename(columns={'Edad (3 grupos de edad)': 'grupo_edad', 'Españoles/Extranjeros': 'origen', 'Sexo': 'sexo', 'Año': 'year', 'Total': 'total'}, inplace=True)
 
     return df_demo
