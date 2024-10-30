@@ -320,3 +320,157 @@ def limpiar_df(df: pd.DataFrame):
     df.drop(columns=['region', 'datetime'], inplace=True)
 
     return df
+
+
+def df_ine(ruta: str):
+    """
+    Carga y concatena archivos CSV de un directorio en un único DataFrame.
+
+    Parámetros:
+    - ruta (str): Ruta al directorio que contiene archivos CSV organizados por año.
+
+    Retorna:
+    - (pd.DataFrame): Un DataFrame concatenado con los datos de todos los archivos CSV en el directorio.
+    """
+
+    # Acceder a las carpetas correspondientes
+    try:
+        anios = os.listdir(ruta)
+
+    except FileNotFoundError:
+        print(f"No existe la ruta: {ruta}")
+
+    lista = [] 
+
+    # Recorremos los años
+    for anio in anios:
+        ruta_anio = os.path.join(ruta, anio)
+        df = pd.read_csv(ruta_anio, sep=';', encoding='latin-1')
+
+        lista.append(df)
+
+    # Juntar los dataframes
+    return pd.concat(lista)
+
+
+def limpieza_ine_econ(df_econ):
+    """
+    Limpia y transforma un DataFrame de datos económicos, generando identificadores de provincias y regiones.
+
+    Parámetros:
+    - df_econ (pd.DataFrame): DataFrame que contiene datos económicos, incluyendo las columnas 'Provincias', 'periodo', y 'Total'.
+
+    Retorna:
+    - (tuple): Una tupla de dos elementos:
+    - df_econ (pd.DataFrame): DataFrame con columnas limpias y datos transformados, que incluye identificadores para provincias y regiones.
+    - df_provincias (pd.DataFrame): DataFrame único de provincias con las columnas 'provincia' y 'provincia_id'.
+    """
+
+    dc_provincias = {
+        'Albacete': 7,                  # Castilla - La Mancha
+        'Alicante/Alacant': 15,         # Comunitat Valenciana
+        'Almería': 4,                   # Andalucía
+        'Araba/Álava': 10,              # País Vasco
+        'Asturias': 11,                 # Principado de Asturias
+        'Ávila': 8,                     # Castilla y León
+        'Badajoz': 16,                  # Extremadura
+        'Balears, Illes': 8743,         # Illes Balears
+        'Barcelona': 9,                 # Cataluña
+        'Bizkaia': 10,                  # País Vasco
+        'Burgos': 8,                    # Castilla y León
+        'Cáceres': 16,                  # Extremadura
+        'Cádiz': 4,                     # Andalucía
+        'Cantabria': 6,                 # Cantabria
+        'Castellón/Castelló': 15,       # Comunitat Valenciana
+        'Ciudad Real': 7,               # Castilla - La Mancha
+        'Córdoba': 4,                   # Andalucía
+        'Coruña, A': 17,                # Galicia
+        'Cuenca': 7,                    # Castilla - La Mancha
+        'Gipuzkoa': 10,                 # País Vasco
+        'Girona': 9,                    # Cataluña
+        'Granada': 4,                   # Andalucía
+        'Guadalajara': 7,               # Castilla - La Mancha
+        'Huelva': 4,                    # Andalucía
+        'Huesca': 5,                    # Aragón
+        'Jaén': 4,                      # Andalucía
+        'León': 8,                      # Castilla y León
+        'Lleida': 9,                    # Cataluña
+        'Lugo': 17,                     # Galicia
+        'Madrid': 13,                   # Comunidad de Madrid
+        'Málaga': 4,                    # Andalucía
+        'Murcia': 21,                   # Región de Murcia
+        'Navarra': 14,                  # Comunidad Foral de Navarra
+        'Ourense': 17,                  # Galicia
+        'Palencia': 8,                  # Castilla y León
+        'Palmas, Las': 8742,            # Canarias
+        'Pontevedra': 17,               # Galicia
+        'Rioja, La': 20,                # La Rioja
+        'Salamanca': 8,                 # Castilla y León
+        'Santa Cruz de Tenerife': 8742, # Canarias
+        'Segovia': 8,                   # Castilla y León
+        'Sevilla': 4,                   # Andalucía
+        'Soria': 8,                     # Castilla y León
+        'Tarragona': 9,                 # Cataluña
+        'Teruel': 5,                    # Aragón
+        'Toledo': 7,                    # Castilla - La Mancha
+        'Valencia/València': 15,        # Comunitat Valenciana
+        'Valladolid': 8,                # Castilla y León
+        'Zamora': 8,                    # Castilla y León
+        'Zaragoza': 5,                  # Aragón
+        'Ceuta': 8744,                  # Ceuta
+        'Melilla': 8745                 # Melilla
+    }
+
+    # Provincias
+    df_econ['provincia'] = df_econ['Provincias'].str.split(r'\s(\D+)', regex=True, expand=True)[1]
+    df_econ['provincia_id'] = df_econ['Provincias'].str.split(r'\s(\D+)', regex=True, expand=True)[0]
+    # Limpiar periodo (2021 tiene un (P))
+    df_econ['periodo'] = df_econ['periodo'].apply(lambda x: int(x.replace('(P)', '')) if type(x) == str else x)
+    # Convertir total a float
+    df_econ['Total'] = df_econ['Total'].str.replace('.', '').astype(float)
+    # Region_id
+    df_econ['region_id'] = df_econ['provincia'].apply(lambda x: dc_provincias[x])
+    # Reset_index
+    df_econ.reset_index(drop=True, inplace=True)
+
+    # Aprovechamos a obtener un dataframe para las provincias
+    df_provincias = df_econ[['provincia', 'provincia_id']].drop_duplicates().reset_index(drop=True)
+    df_provincias['region_id'] = df_provincias['provincia'].apply(lambda x: dc_provincias[x])
+
+    # Eliminar columnas sobrantes
+    df_econ.drop(columns=['Provincias', 'provincia'], inplace=True)
+
+    return df_econ, df_provincias
+
+
+def limpieza_ine_demo(df_demo):
+    """
+    Limpia y transforma un DataFrame de datos demográficos, aplicando filtros y renombrando columnas clave.
+
+    Parámetros:
+    - df_demo (pd.DataFrame): DataFrame que contiene datos demográficos, incluyendo las columnas 'Provincias', 'Edad (3 grupos de edad)', 'Españoles/Extranjeros', y 'Sexo'.
+
+    Retorna:
+    - (pd.DataFrame): DataFrame transformado que contiene datos demográficos filtrados, con columnas renombradas, identificadores de provincia, y sin las entradas de totales.
+    """
+
+    # Filtramos para quedarnos solo con las entradas que nos interesan
+    cond1 = df_demo['Provincias'] != 'TOTAL ESPAÑA'
+    cond2 = df_demo['Edad (3 grupos de edad)'] != 'TOTAL EDADES'
+    cond3 = df_demo['Españoles/Extranjeros'] != 'TOTAL'
+    cond4 = df_demo['Españoles/Extranjeros'] != r'% Extranjeros'
+    cond5 = df_demo['Sexo'] != 'Ambos sexos'
+
+    df_demo = df_demo[cond1 & cond2 & cond3 & cond4 & cond5]
+
+    # Provincias
+    df_demo['provincia'] = df_demo['Provincias'].str.split(r'\s(\D+)', regex=True, expand=True)[1]
+    df_demo['provincia_id'] = df_demo['Provincias'].str.split(r'\s(\D+)', regex=True, expand=True)[0]
+    # quitar columnas
+    df_demo.drop(columns='Provincias', inplace=True)
+    df_demo.reset_index(drop=True, inplace=True)
+
+    # Renombrar columnas
+    df_demo.rename(columns={'Edad (3 grupos de edad)': 'Grupo_edad', 'Españoles/Extranjeros': 'Origen'}, inplace=True)
+
+    return df_demo
